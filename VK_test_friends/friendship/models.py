@@ -19,9 +19,16 @@ class FriendRequest(models.Model):
     status = models.CharField(max_length=1, choices=STATUS_CHOICES, default=PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
 
+
+    class Meta:
+        verbose_name = 'Заявка в друзья'
+        verbose_name_plural = 'Заявки в друзья'
+
+
     def accept(self):
         self.status = self.ACCEPTED
         self.save()
+
 
     def decline(self):
         self.status = self.DECLINED
@@ -35,6 +42,8 @@ class Friend(models.Model):
 
 
     class Meta:
+        verbose_name = 'Дружба'
+        verbose_name_plural = 'Дружба'
         unique_together = ('user', 'friend') # уникальная связка пользователя с другом
 
 

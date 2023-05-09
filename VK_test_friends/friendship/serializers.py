@@ -20,10 +20,10 @@ class FriendRequestSerializer(serializers.ModelSerializer):
 
 
     def create(self, validated_data):
+        """Создание нового запроса на добавление в друзья в базе данных"""
         from_user = self.context.get('request').user
         to_user = validated_data.get('to_user')
         return FriendRequest.objects.create(from_user=from_user, to_user=to_user)
-
 
 
 class FriendSerializer(serializers.ModelSerializer):
