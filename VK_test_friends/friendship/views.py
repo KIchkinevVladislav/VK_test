@@ -17,6 +17,7 @@ def register(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def send_friend_request(request):
@@ -31,25 +32,38 @@ def send_friend_request(request):
         return Response({'detail': 'Пользователь не найден.'}, status=status.HTTP_404_NOT_FOUND)
     if from_user.id == to_user_id:
         return Response({'detail': 'Вы не можете отправить запрос самому себе.'}, status=status.HTTP_400_BAD_REQUEST)
+
     data = request.data.copy()
-    data['from_user'] = from_user.id
+    data['from_user'] = from_user.pk
     serializer = FriendRequestSerializer(data=data, context={'request': request})
     if serializer.is_valid():
         serializer.save()
+
+        # Проверяем, есть ли заявка от to_user к from_user
+        friend_request = FriendRequest.objects.filter(from_user=to_user, to_user=from_user).first()
+        if friend_request:
+            # Создаем объект Friend для обоих пользователей
+            Friend.make_friends(from_user, to_user)
+            # Удаляем соответствующие заявки
+            friend_request_2 = FriendRequest.objects.filter(from_user=from_user, to_user=to_user).first()
+            if friend_request_2:
+                friend_request_2.delete()
+            friend_request.delete()
+            message = f"Пользователь {to_user.username} добавлен в друзья"
+            return Response({"message": message}, status=status.HTTP_200_OK)
+        
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 
 @api_view(['POST'])
 def accept_friend_request(request):
     """Добавление пользователя в друзья по номеру заявки"""
     try:
+        # проверяем, что запрос существует
         friend_request = FriendRequest.objects.get(id=request.data['friend_request_id'])
     except FriendRequest.DoesNotExist:
         return Response({"message": "Запрос в друзья не найден"}, status=status.HTTP_404_NOT_FOUND)
-    if friend_request.status == 'D':
-        return Response({"message": "Запрос в друзья уже отклонен"}, status=status.HTTP_400_BAD_REQUEST)
     if friend_request.to_user != request.user:
         return Response({"message": "Вы не можете удовлетворить эту заявку в друзья"}, status=status.HTTP_400_BAD_REQUEST)
     friend_request.accept()
@@ -57,23 +71,24 @@ def accept_friend_request(request):
     from_user = friend_request.to_user
     Friend.make_friends(from_user, to_user)
     message = f"Пользователь {to_user.username} добавлен в друзья"
+    friend_request.delete()
     return Response({"message": message}, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
 def decline_friend_request(request):
-    """Отказ в добавления в друзья по номеру заявки"""
+    """Отказ в добавлении в друзья по номеру заявки"""
     try:
+        # проверяем, что запрос существует
         friend_request = FriendRequest.objects.get(id=request.data['friend_request_id'])
     except FriendRequest.DoesNotExist:
         return Response({"message": "Запрос в друзья не найден"}, status=status.HTTP_404_NOT_FOUND)
-    if friend_request.status == 'A':
-        return Response({"message": "Запрос в друзья уже принят"}, status=status.HTTP_400_BAD_REQUEST)
     if friend_request.to_user != request.user:
         return Response({"message": "Вы не можете отклонить эту заявку в друзья"}, status=status.HTTP_400_BAD_REQUEST)
     from_user = friend_request.from_user
     friend_request.decline()
     message = f"Запрос на добавление в друзья от пользователя {from_user.username} отклонен"
+    friend_request.delete()
     return Response({"message": message}, status=status.HTTP_200_OK)
 
 
@@ -127,26 +142,71 @@ def friend_status(request, user_id):
 
 @api_view(['DELETE'])
 def remove_friend(request, user_id):
-    """Удалить друга"""
+    """Удалить друга, статус дружбы также удаляется у другого пользователя"""
     user = request.user
-    friend = Friend.objects.get(user=user, friend=User.objects.get(id=user_id))
+    friend = Friend.objects.filter(user=user, friend__id=user_id).first()
+    if not friend:
+        return Response({'Статус': 'Данный пользователь не является вашим другом.'}, status=status.HTTP_400_BAD_REQUEST)
+    friend_name = friend.friend.username
     friend.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    # Удаляем запись из модели Friend у другого пользователя
+    opposite_friend = Friend.objects.filter(user=friend.friend, friend=user).first()
+    if opposite_friend:
+        opposite_friend.delete()
+    return Response({'Статус': f'Пользователь {friend_name} удален из друзей'})
 
 
-@api_view(['POST'])
-def send_automatic_friend_request(request, user_id):
-    """Автоматическое добавление пользователя в друзья, если отправлены взаимные заявки"""
-    user = request.user
-    target_user = User.objects.get(id=user_id)
-    friend_request = FriendRequest.objects.filter(from_user=target_user, to_user=user).first()
-    if friend_request:
-        friend_request.accept()
-        serializer = FriendSerializer(Friend.objects.filter(from_user=user, to_user=target_user), many=True)
-        return Response(serializer.data)
-    else:
-        friend_request = FriendRequest(from_user=user, to_user=target_user)
-        friend_request.save()
-        serializer = FriendRequestSerializer(friend_request)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+# @api_view(['POST'])
+# def send_automatic_friend_request(request, user_id):
+#     """Автоматическое добавление пользователя в друзья, если отправлены взаимные заявки"""
+#     user = request.user
+#     target_user = User.objects.get(id=user_id)
+#     friend_request = FriendRequest.objects.filter(from_user=target_user, to_user=user).first()
+#     if friend_request:
+#         friend_request.accept()
+#         serializer = FriendSerializer(Friend.objects.filter(from_user=user, to_user=target_user), many=True)
+#         return Response(serializer.data)
+#     else:
+#         friend_request = FriendRequest(from_user=user, to_user=target_user)
+#         friend_request.save()
+#         serializer = FriendRequestSerializer(friend_request)
+#         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+# @api_view(['POST'])
+# def send_automatic_friend_request(request, user_id):
+#     """Автоматическое добавление пользователя в друзья, если отправлены взаимные заявки"""
+#     user = request.user
+#     target_user = User.objects.get(id=user_id)
+#     friend_request = FriendRequest.objects.filter(from_user=target_user, to_user=user).first()
+#     if friend_request:
+#         friend_request.accept()
+#         serializer = FriendSerializer(Friend.objects.filter(from_user=user, to_user=target_user), many=True)
+#         return Response({'status': 'Friend request accepted and user added to friends'}, serializer.data)
+#     else:
+#         friend_request = FriendRequest(from_user=user, to_user=target_user)
+#         friend_request.save()
+#         serializer = FriendRequestSerializer(friend_request)
+#         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+# @api_view(['POST'])
+# def send_automatic_friend_request(request, user_id):
+#     """Автоматическое добавление пользователя в друзья, если отправлены взаимные заявки"""
+#     user = request.user
+#     target_user = User.objects.get(id=user_id)
+
+#     # Проверяем, существует ли заявка на дружбу от целевого пользователя к текущему пользователю
+#     friend_request_1 = FriendRequest.objects.filter(from_user=target_user, to_user=user).first()
+
+#     # Проверяем, существует ли заявка на дружбу от текущего пользователя к целевому пользователю
+#     friend_request_2 = FriendRequest.objects.filter(from_user=user, to_user=target_user).first()
+
+#     if friend_request_1 and friend_request_2:
+#         friend_request_1.accept()
+#         serializer = FriendSerializer(Friend.objects.filter(from_user=user, to_user=target_user), many=True)
+#         return Response({'status': 'Friend request accepted and user added to friends'}, serializer.data)
+#     else:
+#         friend_request = FriendRequest(from_user=user, to_user=target_user)
+#         friend_request.save()
+#         serializer = FriendRequestSerializer(friend_request)
+#         return Response(serializer.data, status=status.HTTP_201_CREATED)
+

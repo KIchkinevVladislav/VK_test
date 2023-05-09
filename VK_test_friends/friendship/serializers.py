@@ -10,25 +10,23 @@ class UserSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-# class FriendRequestSerializer(serializers.ModelSerializer):
-#     """Сериализатор для модели FriendRequest"""
-#     from_user = serializers.HiddenField(default=serializers.CurrentUserDefault())
-
-#     class Meta:
-#         model = FriendRequest
-#         fields = ('id', 'from_user', 'to_user') до патча с запросами
-
 class FriendRequestSerializer(serializers.ModelSerializer):
-    from_user = serializers.CharField(source='from_user.username')
-    to_user = serializers.CharField(source='to_user.username')
+    from_user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    to_user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
 
     class Meta:
         model = FriendRequest
         fields = ['id', 'from_user', 'to_user', 'status', 'created_at']
 
 
+    def create(self, validated_data):
+        from_user = self.context.get('request').user
+        to_user = validated_data.get('to_user')
+        return FriendRequest.objects.create(from_user=from_user, to_user=to_user)
 
-class FriendSerializer(serializers.ManyRelatedField):
+
+
+class FriendSerializer(serializers.ModelSerializer):
     """Сериализатор для модели Friend"""
     user = UserSerializer(read_only=True)
     friend = UserSerializer(read_only=True)
@@ -36,3 +34,10 @@ class FriendSerializer(serializers.ManyRelatedField):
     class Meta:
         model = Friend
         fields = ('id', 'user', 'friend')
+
+    def to_representation(self, instance):
+        """Функция возвращет никнеймы пользователя и друга"""
+        representation = super().to_representation(instance)
+        representation['user'] = representation['user']['username']
+        representation['friend'] = representation['friend']['username']
+        return representation
