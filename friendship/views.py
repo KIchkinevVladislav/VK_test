@@ -177,6 +177,14 @@ def friend_status(request, user_id):
     if user.id == user_id:
         return Response({'Статус': 'Вы указали свой id'})
     try:
+    # проверяем, что запрашиваемый пользователь существует
+        to_user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response(
+            {'detail': 'Пользователь не найден.'}, 
+            status=status.HTTP_404_NOT_FOUND
+            )
+    try:
         # проверяем, являются ли пользователи друзьями
         friend = Friend.objects.get(user=user, friend__id=user_id)
         friend_status = 'Вы друзья'
@@ -204,6 +212,16 @@ def remove_friend(request, user_id):
     :param user_id:
     """
     user = request.user
+    if user.id == user_id:
+        return Response({'Статус': 'Вы указали свой id'})
+    try:
+    # проверяем, что запрашиваемый пользователь существует
+        to_user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response(
+            {'detail': 'Пользователь не найден.'}, 
+            status=status.HTTP_404_NOT_FOUND
+            )
     friend = Friend.objects.filter(user=user, friend__id=user_id).first()
     if not friend:
         return Response(

@@ -39,7 +39,10 @@ class FriendSerializer(serializers.ModelSerializer):
         """Функция возвращет никнеймы пользователя и друга"""
         representation = super().to_representation(instance)
         representation['user'] = representation['user']['username']
-        representation['friend'] = representation['friend']['username']
+        representation['friend'] = {
+            'id': representation['friend']['id'],
+            'username': representation['friend']['username']
+        }
         return representation
 
 
