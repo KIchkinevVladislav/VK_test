@@ -41,3 +41,8 @@ class FriendSerializer(serializers.ModelSerializer):
         representation['user'] = representation['user']['username']
         representation['friend'] = representation['friend']['username']
         return representation
+
+
+class FriendRequestIdSerializer(serializers.Serializer):
+    """Сериализатор для индентификатора заявки в друзья"""
+    friend_request_id = serializers.IntegerField()

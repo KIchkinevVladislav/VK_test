@@ -14,9 +14,21 @@ class FriendRequest(models.Model):
         (DECLINED, 'Declined')
     )
 
-    from_user = models.ForeignKey(User, related_name='friend_requests_sent', on_delete=models.CASCADE)
-    to_user = models.ForeignKey(User, related_name='friend_requests_received', on_delete=models.CASCADE)
-    status = models.CharField(max_length=1, choices=STATUS_CHOICES, default=PENDING)
+    from_user = models.ForeignKey(
+        User, 
+        related_name='friend_requests_sent', 
+        on_delete=models.CASCADE
+        )
+    to_user = models.ForeignKey(
+        User, 
+        related_name='friend_requests_received', 
+        on_delete=models.CASCADE
+        )
+    status = models.CharField(
+        max_length=1, 
+        choices=STATUS_CHOICES, 
+        default=PENDING
+        )
     created_at = models.DateTimeField(auto_now_add=True)
 
 
@@ -37,8 +49,16 @@ class FriendRequest(models.Model):
 
 class Friend(models.Model):
     """Модель хранит связки пользователей как друзей"""
-    user = models.ForeignKey(User, related_name='friends', on_delete=models.CASCADE)
-    friend = models.ForeignKey(User, related_name='my_friends', on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        User, 
+        related_name='friends', 
+        on_delete=models.CASCADE
+        )
+    friend = models.ForeignKey(
+        User, 
+        related_name='my_friends', 
+        on_delete=models.CASCADE
+        )
 
 
     class Meta:
