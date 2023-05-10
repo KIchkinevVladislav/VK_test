@@ -1,9 +1,11 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 urlpatterns = [
     path('register/', views.register, name='register'), 
     # регистрация нового пользователя
+    path('api-auth/', include('rest_framework.urls')),
+    # обеспечиваем возможность входа и выхода в аккаунт
     path('friend-request/', views.send_friend_request, name='send_friend_request'), 
     # отправка заявки в друзья
     path('friend-request/accept/', views.accept_friend_request, name='accept_friend_request'), 

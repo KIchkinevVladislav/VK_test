@@ -27,17 +27,11 @@ def register(request):
     request=FriendRequestSerializer,
 )
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny])
+@permission_classes([permissions.IsAuthenticated])
 def send_friend_request(request):
     """Отправка запроса на добавление в друзья"""
     # отправляется JSON-объект формата: {"to_user": id}, где id - целое число, индентификатор пользователя, к которому направляется запрос
-    from_user = request.user if request.user.is_authenticated else None
-    if not from_user:
-    # проверяем авторизован ли пользователь
-        return Response(
-            {'detail': 'Учетные данные для аутентификации не были предоставлены.'}, 
-            status=status.HTTP_401_UNAUTHORIZED
-            )
+    from_user = request.user 
     to_user_id = request.data.get('to_user')
     try:
     # проверяем, что запрашиваемый пользователь существует
@@ -91,6 +85,7 @@ def send_friend_request(request):
     request=FriendRequestIdSerializer,
 )
 @api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
 def accept_friend_request(request):
     """Добавление пользователя в друзья по номеру заявки"""
     # отправляется JSON-объект формата: {"friend_request_id": 1}, где число - номер заявки
@@ -121,6 +116,7 @@ def accept_friend_request(request):
     request=FriendRequestIdSerializer,
 )
 @api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
 def decline_friend_request(request):
     """Отказ в добавлении в друзья по номеру заявки"""
     # отправляется JSON-объект формата: {"friend_request_id": 1}, где число - номер заявки
@@ -146,6 +142,7 @@ def decline_friend_request(request):
 
 
 @api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
 def friend_requests(request):
     """Возвращает список входящих и исходящих заявок в друзья"""
     user = request.user
@@ -157,6 +154,7 @@ def friend_requests(request):
 
 
 @api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
 def friends(request):
     """Посмотреть список друзей"""
     user = request.user
@@ -168,6 +166,7 @@ def friends(request):
 
 
 @api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
 def friend_status(request, user_id):
     """
     Возвращает статус запрашиваемого пользователями или наличие заявок
@@ -206,6 +205,7 @@ def friend_status(request, user_id):
 
 
 @api_view(['DELETE'])
+@permission_classes([permissions.IsAuthenticated])
 def remove_friend(request, user_id):
     """
     Удалить друга, статус дружбы также удаляется у другого пользователя
