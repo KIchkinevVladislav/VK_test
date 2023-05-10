@@ -16,7 +16,7 @@ REST API для сервиса ***VK_test_friends**.
 
 [Спецификация OpenAPI (redoc_vk_test.yaml)](https://github.com/KIchkinevVladislav/VK_test/blob/main/static/redoc_vk_test.yaml)
 
-[Краткое руководство пользователя по запуску и использованию  (VK_test_friends_short_documentation.pdf)](https://github.com/KIchkinevVladislav/VK_test/blob/main/static/redoc_vk_test.yaml)
+[Краткое руководство пользователя по запуску и использованию  (VK_test_friends_short_documentation.pdf)](https://github.com/KIchkinevVladislav/VK_test/blob/main/static/VK_test_friends_short_documentation.pdf)
 
 
 #### Стек технологий:
