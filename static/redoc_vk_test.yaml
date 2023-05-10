@@ -1,0 +1,366 @@
+openapi: 3.0.3
+info:
+  title: VK_test_friends
+  version: 1.0.0
+  description: |
+    запросы к API начинаются с `/api/`
+    
+    Проект **VK_test_friends** тестовое задание стажировки ВКонтакте,
+    реализующие посредством REST интерфейса следующий функционал:
+    - регистрация пользователя
+    - отправка заявки на добавление в друзья
+    - принять/отклонить заявку
+    - получить пользователю статус дружбы с другим пользователей или наличие заявок
+    - удалить пользователя из друзей
+    - автоматическое добавление в друзья при наличии встречных заявок
+
+tags:
+  - name: FriendRequest
+    description: Запросы в друзья
+  - name: Friend
+    description: Связки пользователей в качестве друзей
+  - name: User
+    description: Пользователь
+
+paths:
+  /api/friend-requests/:
+    post:
+      tags:
+        - FriendRequest
+      summary: Отправить запрос на добавление в друзья
+      description: Отправляет запрос на добавление в друзья к другому пользователю.
+      requestBody:
+        description: JSON-объект формата: {"to_user": id}, где id - целое число, индентификатор пользователя, к которому направляется запрос
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to_user:
+                  type: integer
+                  description: Идентификатор пользователя, к которому направляется запрос
+                  example: 2
+              required:
+                - to_user
+      responses:
+        '200':
+          description: Запрос на добавление в друзья был отправлен успешно.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Сообщение об успешном создании заявки на добавление в друзья.
+                    example: Пользователь testuser добавлен в друзья
+        '201':
+          description: Запрос на добавление в друзья был создан успешно, но еще не одобрен.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FriendRequestSerializer'
+        '400':
+          description: Ошибка при создании запроса на добавление в друзья.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    description: Описание ошибки.
+                    example: Вы не можете отправить запрос самому себе.
+        '401':
+          description: Пользователь не авторизован.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    description: Описание ошибки.
+                    example: Учетные данные для аутентификации не были предоставлены.
+        '404':
+          description: Пользователь не найден.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    description: Описание ошибки.
+                    example: Пользователь не найден.
+  /accept_friend_request/:
+    post:
+      tags:
+        - FriendRequest
+      summary: Добавление пользователя в друзья по номеру заявки
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FriendRequestIdSerializer'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /api/friends/decline/:
+    post:
+      tags:
+        - FriendRequest
+      summary: Отказ в добавлении в друзья по номеру заявки
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FriendRequestIdSerializer'
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Сообщение об успешном выполнении запроса
+                    example: "Запрос на добавление в друзья от пользователя user1 отклонен"
+        '400':
+          description: Некорректный запрос
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Описание ошибки
+                    example: "Вы не можете отклонить эту заявку в друзья"
+        '404':
+          description: Запрос в друзья не найден
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Описание ошибки
+                    example: "Запрос в друзья не найден"
+  /friend-requests:
+    get:
+      summary: Возвращает список входящих и исходящих заявок в друзья
+      tags:
+        - FriendRequest
+      responses:
+        "200":
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Входящие заявки:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FriendRequest"
+                    description: Список входящих заявок в друзья
+                  Исходящие заявки:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FriendRequest"
+                    description: Список исходящих заявок в друзья
+  /friend_status/{user_id}/:
+    get:
+      summary: Получить статус запрашиваемого пользователя или наличие заявок в друзья
+      tags:
+        - Friends
+      parameters:
+        - in: path
+          name: user_id
+          schema:
+            type: integer
+          required: true
+          description: Идентификатор запрашиваемого пользователя
+      responses:
+        '200':
+          description: Успешный ответ со статусом дружбы или наличием заявки в друзья
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Статус:
+                    type: string
+        '400':
+          description: Некорректный запрос
+        '401':
+          description: Неавторизованный запрос
+        '404':
+          description: Пользователь не найден
+  /friends:
+    get:
+      summary: Посмотреть список друзей
+      operationId: get_friends
+      tags:
+        - Friend
+      responses:
+        '200':
+          description: Успешный ответ с данными о друзьях пользователя
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Friend'
+        '404':
+          description: Пользователь не найден
+      security:
+        - bearerAuth: []
+  /register:
+    post:
+      summary: Регистрация пользователя
+      tags:
+        - User
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSerializer'
+      responses:
+        "201":
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSerializer'
+        "400":
+          description: Ошибка запроса
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      security: []
+  /friends/{user_id}/:
+    delete:
+      summary: Удалить друга
+      tags:
+        - Friends
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            description: Идентификатор друга, которого нужно удалить
+      responses:
+        '200':
+          description: Пользователь успешно удален из друзей
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Статус:
+                    type: string
+                    description: Статус операции
+        '400':
+          description: Данный пользователь не является вашим другом
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Статус:
+                    type: string
+                    description: Сообщение об ошибк
+components:
+  schemas:
+    FriendRequestSerializer:
+      type: object
+      description: Сериализатор заявок в друзья
+      properties:
+        id:
+          type: integer
+          description: Идентификатор заявки на добавление в друзья.
+          example: 3
+        from_user:
+          type: integer
+          description: Идентификатор пользователя, отправившего заявку на добавление в друзья.
+          example: 1
+        to_user:
+          type: integer
+          description: Идентификатор пользователя
+    FriendRequestIdSerializer:
+      type: object
+      description: Сериализатор индентификатора заявок в друзья
+      properties:
+        friend_request_id:
+          type: integer
+          description: Номер заявки на добавление в друзья
+          example: 1
+          minimum: 1
+    FrieddSerializer:
+      type: object
+      description: Сериализатор модели дружбы
+      properties:
+        id:
+          type: integer
+          description: Номер заявки на добавление в друзья
+        user:
+          type: string
+          description: Пользователь
+        friend:
+          type: string
+          description: друг пользователя
+    UserSerializer:
+      type: object
+      description: Сериализатор модели пользователя
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
