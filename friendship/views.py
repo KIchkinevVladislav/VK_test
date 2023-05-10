@@ -175,6 +175,8 @@ def friend_status(request, user_id):
     :param user_id:
     """
     user = request.user
+    if user.id == user_id:
+        return Response({'Статус': 'Вы указали свой id'})
     try:
         # проверяем, являются ли пользователи друзьями
         friend = Friend.objects.get(user=user, friend__id=user_id)
