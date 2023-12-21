@@ -1,24 +1,30 @@
-# Используем образ Python 3.10.9
-FROM python:3.10.9-slim
+# Используем образ Python
+FROM python:3.9
 
-# Устанавливаем зависимости
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        gcc \
-        python3-dev \
-        default-libmysqlclient-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Копируем код приложения
+# Устанавливаем рабочую директорию в /app
 WORKDIR /app
-COPY . /app
 
-# Устанавливаем зависимости Python
+# Копируем requirements.txt в текущую директорию образа
+COPY requirements.txt .
+
+# Устанавливаем зависимости из requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Создаем миграции и выполняем миграции
-RUN python manage.py makemigrations
-RUN python manage.py migrate
+# Копируем все файлы из текущей директории (где находится Dockerfile) в /app в образе
+COPY . .
+
+# Выполняем миграции
+RUN python manage.py makemigrations && python manage.py migrate
+
+# Создаем администатора
+RUN echo "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@myproject.com', 'password')" | python manage.py shell
+
+# Заполняем базу данных с использованием фикстур
+RUN python manage.py loaddata tree/fixtures/menu.json
+RUN python manage.py loaddata tree/fixtures/menuitem.json
+
+# Указываем, что приложение будет доступно на порту 8000
+EXPOSE 8000
 
 # Запускаем приложение
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

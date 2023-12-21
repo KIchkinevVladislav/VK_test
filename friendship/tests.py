@@ -2,13 +2,10 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
-from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
 from rest_framework import status
-from .views import accept_friend_request
 
 from .models import FriendRequest, Friend
-from .serializers import UserSerializer, FriendRequestIdSerializer
 
 class FriendRequestModelTestCase(TestCase):
     def setUp(self):
